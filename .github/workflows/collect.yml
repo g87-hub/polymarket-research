@@ -33,4 +33,4 @@ jobs:
       - name: Settle recent outcomes for the windows just collected
         run: python -m pmr backfill --days 0.3 --max-minutes 15
       - if: always()
-        run: scripts/store.sh push "collect $IN_MINUTESm"
+        run: scripts/store.sh push "collect ${IN_MINUTES}m"
