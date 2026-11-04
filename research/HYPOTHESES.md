@@ -48,3 +48,32 @@ Per-UTC-hour Up frequency on backfilled outcomes, Holm-corrected across 24 hours
 3. Need ≥ 150 markets per split before any verdict other than "insufficient evidence".
 4. Freeze one variant (`state/frozen.json`), then evaluate the untouched test **once** (`state/test_lock.json` blocks re-runs).
 5. Forward paper: frozen rules on markets starting after freeze; passes only with ≥ 300 settled trades over ≥ 14 distinct days, net > 0, bootstrap p ≤ 0.05, same execution assumptions.
+
+---
+
+## Additions after the look-back (2026-11-04, written before testing)
+
+Context: the 14-day look-back rejected H2 and H3 and found prices close to fair. These are the remaining mechanisms worth checking, from external research plus our own data.
+
+### H6 Mid-window longshots in 15m markets (pre-registered retest of a look-back lead)
+- **Lead:** in discovery days, sides priced 10–30¢ at minute 6 of 15m markets won ~6–7 points more often than priced (BTC n=329, ETH n=340, ~1.5–1.8 se). With ~200 cells inspected, this is likely chance.
+- **Exact rule, frozen now:** 15m markets only, at elapsed minute 6, buy the side priced in (0.10, 0.30]. Cost = price + 1¢ + fee. One trade per market.
+- **Test:** only on markets that START after 2026-11-05 00:00 UTC (data nobody has looked at). Re-run workflow 2 after ≥ 5 new days.
+- **Falsified if:** net per share ≤ 0 on the new days, or p ≥ 0.05 (one test per asset, Holm over 2).
+
+### H7 Both sides below $1 ("pair cost")
+- **Why:** if best ask Up + best ask Down < 1 − fees, buying both locks a profit. Fees are ~1.75¢ per leg at 50¢, so the pair must cost ≤ ~96.5¢.
+- **Data:** the collector records both books every second; the quality report already prints `sum_best_asks`.
+- **Rule:** count snapshots and executable size where ask_up + ask_down + fees < 1 at the same poll; simulate both legs with the same delay/depth model.
+- **Falsified if:** such moments are absent, or too small/short to fill both legs after a 1 s delay. Note: "legging in" at different times is directional risk, not arbitrage.
+
+### H8 Book lag inside the settlement window
+- **Why:** settlement averages the final 60 s (Chainlink `twap-60s` stream; some sources say 30 s for 5m). Once inside that window, part of the average is known, so the fair price moves predictably. A book that reprices slower than the partial average would lag.
+- **Data:** books + Coinbase proxy (basis risk to Chainlink). This is H1's `fair_value` restricted to the final 60 s; the model now uses the final-window average.
+- **Falsified if:** at ≥ 1 s delay the ask already reflects the partial average (no positive edge after fees), or the edge exists only at 0.5 s delay, which a GitHub runner cannot achieve.
+
+### Not testable here, recorded for completeness
+- **Market making for maker rebates:** makers pay no fee and share 20% of taker fees, but on-chain evidence shows a large passive maker lost heavily to adverse selection. Simulating maker fills honestly requires queue data we do not have, and doing it live needs order placement (prohibited here).
+- **Cross-venue (Kalshi, Polymarket US, options):** different settlement sources and times, so not true arbitrage; acting on it requires trading accounts.
+- **Opening-price manipulation:** the start price is a single snapshot. Deliberately moving it is market manipulation; excluded on principle.
+- **Copying top wallets:** survivorship bias; top wallets' edge is infrastructure and speed, which copying after the fact cannot reproduce.

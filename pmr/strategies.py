@@ -33,7 +33,7 @@ class Ctx:
     sigma_per_s: float | None     # trailing realized vol of log spot, per sqrt(second)
     prev_dir_proxy: int | None    # +1/-1 sign of previous window's proxy move
     other_asset_ret: float | None # log return of the other asset since this window's start
-    spot_avg_so_far: float | None = None  # proxy average price from window start to t
+    spot_avg_so_far: float | None = None  # proxy average since the settlement window opened (None before)
 
     @property
     def tau(self) -> float:
@@ -48,24 +48,32 @@ def norm_cdf(x: float) -> float:
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
-def p_up_model(ctx: Ctx) -> float | None:
-    """P(Up) under the verified rule: Up iff the window's TWAP >= start price.
+SETTLE_WINDOW_S = 60  # Chainlink "twap-60s" stream; some sources say 30 s for 5m markets (unverified)
 
-    Final average = f*A_elapsed + (1-f)*A_remaining. With driftless motion the
-    remaining average is ~ S_t with sd S_t*sigma*sqrt(tau/3). Falls back to the
-    end-price form only when no elapsed average is available. Uses the external
-    proxy, so it carries basis risk to the Chainlink stream that settles."""
+
+def p_up_model(ctx: Ctx, settle_window_s: float = SETTLE_WINDOW_S) -> float | None:
+    """P(Up) when Up iff the average price over the FINAL `settle_window_s`
+    seconds >= start price (driftless Brownian approximation).
+
+    Before the settlement window: A ~ S_t, var = s^2 S^2 (gap + W/3) where gap is
+    the time until the window opens. Inside it: A = (k/W)*A_seen + (r/W)*A_rest,
+    var = (r/W)^2 s^2 S^2 r/3, with k seen and r remaining seconds. Uses the
+    external proxy, so it carries basis risk to the Chainlink stream."""
     if None in (ctx.spot, ctx.spot0, ctx.sigma_per_s) or ctx.sigma_per_s <= 0 or ctx.tau <= 0:
         return None
-    if ctx.spot_avg_so_far is None:
-        z = math.log(ctx.spot / ctx.spot0) / (ctx.sigma_per_s * math.sqrt(ctx.tau))
-        return norm_cdf(z)
-    f = min(max(ctx.elapsed_frac, 0.0), 1.0)
-    mean_final = f * ctx.spot_avg_so_far + (1 - f) * ctx.spot
-    sd = (1 - f) * ctx.spot * ctx.sigma_per_s * math.sqrt(ctx.tau / 3.0)
+    W = min(settle_window_s, ctx.end_epoch - ctx.start_epoch)
+    sig, S = ctx.sigma_per_s, ctx.spot
+    if ctx.tau > W or ctx.spot_avg_so_far is None:
+        gap = max(ctx.tau - W, 0.0)
+        mean, sd = S, S * sig * math.sqrt(gap + W / 3.0)
+    else:
+        r = ctx.tau
+        k = W - r
+        mean = (k / W) * ctx.spot_avg_so_far + (r / W) * S
+        sd = (r / W) * S * sig * math.sqrt(r / 3.0)
     if sd <= 0:
-        return 1.0 if mean_final >= ctx.spot0 else 0.0
-    return norm_cdf((mean_final - ctx.spot0) / sd)
+        return 1.0 if mean >= ctx.spot0 else 0.0
+    return norm_cdf((mean - ctx.spot0) / sd)
 
 
 @dataclass

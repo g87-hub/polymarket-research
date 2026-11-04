@@ -1,6 +1,6 @@
 """Synthetic fixtures for TESTS ONLY. Never used as research evidence.
 
-Settles like the real markets (window TWAP >= start price). Builds an efficiently priced market: asks = true settlement probability +
+Settles like the real markets (average over the final 60 s >= start price). Builds an efficiently priced market: asks = true settlement probability +
 half-spread, so a correct pipeline should find no edge after fees."""
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from pmr.strategies import norm_cdf
+from pmr.strategies import SETTLE_WINDOW_S, norm_cdf
 
 
 def make(hours: float = 24, minutes: int = 5, step_s: int = 5, sigma: float = 0.0002,
@@ -26,18 +26,22 @@ def make(hours: float = 24, minutes: int = 5, step_s: int = 5, sigma: float = 0.
     for s in range(t0 + w * 3, t0 + n - w, w):  # leave warm-up for vol estimate
         e = s + w
         s0 = spot[s - t0]
-        win = spot[s - t0:e - t0]
-        up = bool(win.mean() >= s0)  # verified rule: window TWAP >= start price
+        W = min(SETTLE_WINDOW_S, w)
+        win = spot[e - W - t0:e - t0]
+        up = bool(win.mean() >= s0)  # rule: average over final W seconds >= start price
         csum = np.cumsum(win)
         mk.append({"asset": "btc", "minutes": minutes, "start_epoch": s, "end_epoch": e,
                    "slug": f"btc-updown-{minutes}m-{s}", "min_order_size": 5.0, "tick_size": 0.01,
                    "price_to_beat": s0})
         outs.append({"asset": "btc", "minutes": minutes, "start_epoch": s, "resolved_up": up})
         for ts in range(s, e, step_s):
-            k = ts - s + 1                      # seconds observed so far
-            f, tau, st = k / w, w - k, spot[ts - t0]
-            mean_final = f * (csum[k - 1] / k) + (1 - f) * st
-            sd = (1 - f) * st * sigma * math.sqrt(tau / 3.0)
+            st, tau = spot[ts - t0], e - ts - 1
+            if tau >= W:
+                mean_final, sd = st, st * sigma * math.sqrt(tau - W + W / 3.0)
+            else:
+                k = W - tau                      # seconds of the settlement window seen
+                mean_final = (k / W) * (csum[k - 1] / k) + (tau / W) * st
+                sd = (tau / W) * st * sigma * math.sqrt(tau / 3.0)
             p = (1.0 if mean_final >= s0 else 0.0) if sd <= 0 else norm_cdf((mean_final - s0) / sd)
             p = min(max(p + mispricing, 0.0), 1.0)
             for side, q in (("up", p), ("down", 1 - p)):

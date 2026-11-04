@@ -122,12 +122,13 @@ def test_ledger_reconciles():
 
 
 def test_twap_rule_model():
-    """Late in a window, a high elapsed average keeps Up likely even if spot
-    has just dipped below the start price (end-price model would say < 0.5)."""
+    """Late in the settlement window, a high average so far keeps Up likely even
+    if spot has just dipped below the start price; before the window opens the
+    same spot dip makes Up less likely than not."""
     base = dict(asset="btc", minutes=5, start_epoch=0, end_epoch=300, up_ask=None, down_ask=None,
                 up_bid=None, down_bid=None, spot0=100.0, spot0_is_official=True, sigma_per_s=0.0003,
                 prev_dir_proxy=None, other_asset_ret=None)
     late = S.Ctx(t=270.0, spot=99.95, spot_avg_so_far=100.2, **base)
     assert S.p_up_model(late) > 0.9
-    no_avg = S.Ctx(t=270.0, spot=99.95, spot_avg_so_far=None, **base)
-    assert S.p_up_model(no_avg) < 0.5
+    early = S.Ctx(t=100.0, spot=99.95, spot_avg_so_far=None, **base)
+    assert S.p_up_model(early) < 0.5

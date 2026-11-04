@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from .execution import BookIndex, ExecParams, simulate_buy
-from .strategies import Ctx, Strategy
+from .strategies import SETTLE_WINDOW_S, Ctx, Strategy
 
 
 class SpotIndex:
@@ -111,7 +111,8 @@ def run_backtest(data: dict, outcomes: pd.DataFrame, strat: Strategy, ep: ExecPa
                       spot, s0, official, sig,
                       None if None in (prev_a, prev_b) or prev_a == prev_b else (1 if prev_b > prev_a else -1),
                       None if None in (o_now, o0) else math.log(o_now / o0),
-                      si.avg(m.asset, m.start_epoch, t))
+                      si.avg(m.asset, m.end_epoch - SETTLE_WINDOW_S, t)
+                      if t > m.end_epoch - SETTLE_WINDOW_S else None)
             dec = strat.decide(ctx)
             if dec is None:
                 continue
