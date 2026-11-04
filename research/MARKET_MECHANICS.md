@@ -4,13 +4,13 @@ Status legend: **V** = confirmed from official docs or live market text; **S** =
 
 ## Contracts
 - **V/S** Slugs: `{asset}-updown-{5m|15m}-{window start, UTC epoch s}`, e.g. `btc-updown-5m-1779909000`. Windows are aligned to multiples of 5/15 minutes.
-- **S** Rules text on sampled international markets: resolves **Up if the end-of-window price is greater than or equal to the start price**, using the Chainlink BTC/USD (or ETH/USD) *data stream* (`data.chain.link/streams/...`), explicitly not exchange spot. Ties go to Up.
-- **S** Some descriptions (Polymarket US, KuCoin's relay of the same markets) describe a **Chainlink 60-second TWAP**. The rule may differ by venue and date. The collector stores each market's full rules text so the exact rule is known per market; do not pool periods with different rules.
+- **V (probe, 2026-11-04)** Current rules text on all four combos: resolves **Up if the Chainlink time-weighted average price (TWAP) over the window is greater than or equal to the price at the beginning of the window**, using the Chainlink BTC/USD or ETH/USD TWAP data stream; otherwise Down. Ties go to Up. Older markets (early/mid 2026) used end-price wording, so rule changes must be respected in any historical analysis.
+- Polymarket US / KuCoin descriptions also mention a Chainlink TWAP. The rule has differed by venue and date. The collector stores each market's full rules text so the exact rule is known per market; do not pool periods with different rules.
 - **S** History: BTC 5-minute launched Feb 2026; 15-minute earlier (late 2025); settlement mechanics refined during 2026. ETH 5-minute availability on the international venue: **?** (probe checks all four combos).
-- **?** Whether the start price ("price to beat") is published in market metadata. The parser looks for it; otherwise the external proxy at window start is used and flagged `ref_official = False`.
+- **V** The start price is **not** published in event metadata (probe found no priceToBeat). The parser looks for it; otherwise the external proxy at window start is used and flagged `ref_official = False`.
 
 ## Fees
-- **V** `fee = shares × 0.07 × p × (1 − p)` for crypto takers, makers 0, rounded to 5 dp, charged in USDC at match time. 100 shares at 50¢ → $1.75 (docs example, used as a unit test). Peak cost ~1.75¢/share at 50¢; ~0.33¢/share at 95¢.
+- **V (probe)** Every market reports `feeType: crypto_fees_v2`, `feeSchedule: {rate: 0.07, exponent: 1, takerOnly: true, rebateRate: 0.2}`, min order size 5, tick 0.01. `fee = shares × 0.07 × p × (1 − p)` for crypto takers, makers 0, rounded to 5 dp, charged in USDC at match time. 100 shares at 50¢ → $1.75 (docs example, used as a unit test). Peak cost ~1.75¢/share at 50¢; ~0.33¢/share at 95¢.
 - **S** Taker fees on these markets began **2026-01-07** (previously zero) and the schedule has changed since; a share of fees is rebated to makers. Never apply the current formula to older data without checking the per-market fee fields the collector records.
 
 ## Data access (what this project can and cannot see)

@@ -17,7 +17,7 @@ from .strategies import Ctx, Strategy
 
 class SpotIndex:
     def __init__(self, spot: pd.DataFrame, vol_lookback_s: int = 900):
-        self.d = {}
+        self.d, self.cs = {}, {}
         if spot.empty:
             return
         for a, g in spot.sort_values("t_recv").groupby("asset"):
@@ -32,6 +32,7 @@ class SpotIndex:
             enough = (cs_dt - cs_dt[j]) > vol_lookback_s * 0.5
             sig = np.where(enough, np.sqrt(var_s), np.nan)
             self.d[a] = (t, g["price"].to_numpy(float), sig)
+            self.cs[a] = np.r_[0.0, np.cumsum(g["price"].to_numpy(float))]
 
     def at(self, asset: str, t: float):
         if asset not in self.d:
@@ -42,6 +43,18 @@ class SpotIndex:
             return None, None
         s = sig[i]
         return float(px[i]), (None if math.isnan(s) else float(s))
+
+
+    def avg(self, asset: str, a: float, b: float):
+        """Mean proxy price over observations with a <= t <= b (causal for b = now)."""
+        if asset not in self.d:
+            return None
+        ts = self.d[asset][0]
+        i, j = bisect.bisect_left(ts, a), bisect.bisect_right(ts, b)
+        if j - i < 1:
+            return None
+        cs = self.cs[asset]
+        return float((cs[j] - cs[i]) / (j - i))
 
 
 def chronological_splits(starts, fracs=(0.5, 0.25, 0.25), embargo_s: int = 900) -> dict:
@@ -97,7 +110,8 @@ def run_backtest(data: dict, outcomes: pd.DataFrame, strat: Strategy, ep: ExecPa
                       ru and _f(ru["best_bid"]), rd and _f(rd["best_bid"]),
                       spot, s0, official, sig,
                       None if None in (prev_a, prev_b) or prev_a == prev_b else (1 if prev_b > prev_a else -1),
-                      None if None in (o_now, o0) else math.log(o_now / o0))
+                      None if None in (o_now, o0) else math.log(o_now / o0),
+                      si.avg(m.asset, m.start_epoch, t))
             dec = strat.decide(ctx)
             if dec is None:
                 continue

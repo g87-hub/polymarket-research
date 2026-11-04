@@ -1,6 +1,6 @@
 """Synthetic fixtures for TESTS ONLY. Never used as research evidence.
 
-Builds an efficiently priced market: asks = true settlement probability +
+Settles like the real markets (window TWAP >= start price). Builds an efficiently priced market: asks = true settlement probability +
 half-spread, so a correct pipeline should find no edge after fees."""
 from __future__ import annotations
 
@@ -26,17 +26,19 @@ def make(hours: float = 24, minutes: int = 5, step_s: int = 5, sigma: float = 0.
     for s in range(t0 + w * 3, t0 + n - w, w):  # leave warm-up for vol estimate
         e = s + w
         s0 = spot[s - t0]
-        up = bool(spot[e - 1 - t0] >= s0)
+        win = spot[s - t0:e - t0]
+        up = bool(win.mean() >= s0)  # verified rule: window TWAP >= start price
+        csum = np.cumsum(win)
         mk.append({"asset": "btc", "minutes": minutes, "start_epoch": s, "end_epoch": e,
                    "slug": f"btc-updown-{minutes}m-{s}", "min_order_size": 5.0, "tick_size": 0.01,
                    "price_to_beat": s0})
         outs.append({"asset": "btc", "minutes": minutes, "start_epoch": s, "resolved_up": up})
         for ts in range(s, e, step_s):
-            tau = e - 1 - ts
-            if tau <= 0:
-                p = 1.0 if spot[ts - t0] >= s0 else 0.0
-            else:
-                p = norm_cdf(math.log(spot[ts - t0] / s0) / (sigma * math.sqrt(tau)))
+            k = ts - s + 1                      # seconds observed so far
+            f, tau, st = k / w, w - k, spot[ts - t0]
+            mean_final = f * (csum[k - 1] / k) + (1 - f) * st
+            sd = (1 - f) * st * sigma * math.sqrt(tau / 3.0)
+            p = (1.0 if mean_final >= s0 else 0.0) if sd <= 0 else norm_cdf((mean_final - s0) / sd)
             p = min(max(p + mispricing, 0.0), 1.0)
             for side, q in (("up", p), ("down", 1 - p)):
                 ask = min(0.99, math.ceil((q + half_spread) * 100) / 100)
