@@ -32,3 +32,9 @@ Data: 10,684 resolved markets over 14 days (BTC/ETH × 5m/15m), 97k one-minute p
 **Calibration:** prices are close to fair. Best cells show +2–4¢ after costs at 1.5–2.7 standard errors, consistent with chance given ~200 cells inspected. Weakest-possible lead: 15m markets, minute 6, sides priced 10–30¢ won ~6–7 points more often than priced (BTC n=329, ETH n=340). Not tested on holdout; would need order-book confirmation.
 
 **Verdict:** no reliable edge found in simple rules on past markets. H2 (late favourite) and H3 (momentum/reversal) rejected on history. H1 and H4 untested (need real order books and are low-prior).
+
+## Session 1 (cont.) — edge research, 2026-11-04 evening
+- External research summarized in chat; mechanisms pre-registered as H6–H8 in HYPOTHESES.md.
+- Settlement model corrected: average over the final 60 s (`SETTLE_WINDOW_S`), not the whole window. 16 tests pass.
+- Key external evidence: in one measured week ~31% of wallets were profitable after fees; the crowd roughly broke even before fees; the biggest loser was a passive maker (adverse selection). Last-tick manipulation was closed by the TWAP change on 2026-08-07.
+- **Next cheapest tests:** (1) one 120-min collect run (workflow 1) → read `sum_best_asks` for H7 and gather book data for H8; (2) after ≥ 5 new days, rerun workflow 2 and evaluate H6 only on markets starting after 2026-11-05 00:00 UTC.
