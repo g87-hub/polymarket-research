@@ -21,3 +21,14 @@ Update this file at the end of every session. Machine state (register, freeze, t
 2. Workflow 2 (look back 14 days, ≤ 150 min). Read `history_latest.md` in the run summary. Only strategies marked 'promising on history' justify forward order-book collection.
 3. Workflow 1 (collect 120 min) once, then check `reports/quality/` for coverage, gaps and latency. Record actual MB/hour here to set the storage budget.
 4. After ~3–5 collection days (≥ 150 markets per split per combo), run workflow 3. Read calibration first.
+
+## Session 1 result — look-back at past markets (run 41926868713, 2026-11-04)
+Data: 10,684 resolved markets over 14 days (BTC/ETH × 5m/15m), 97k one-minute price points. Costs assumed: price + 1¢ half-spread + 0.07·p·(1−p) fee. Prices are trade/mid history, not order books.
+
+**Outcomes:** Up won 46.6–49.4% depending on combo. Only BTC 15m differs from 50% at p = 0.013 uncorrected (≈0.05 after correcting for 4 combos); this most likely reflects a down-trending fortnight, not a repeatable effect. No streak effect (|z| ≤ 2.0, none significant after correction). No UTC hour stood out after Holm correction.
+
+**Strategies (20 tests):** all rejected or insufficient evidence. No variant was positive in both discovery (older 10 days) and holdout (newest 5 days) by more than noise. Buying at open loses ≈ 1–7¢/share; late favourites ≈ −2¢ to +0.5¢.
+
+**Calibration:** prices are close to fair. Best cells show +2–4¢ after costs at 1.5–2.7 standard errors, consistent with chance given ~200 cells inspected. Weakest-possible lead: 15m markets, minute 6, sides priced 10–30¢ won ~6–7 points more often than priced (BTC n=329, ETH n=340). Not tested on holdout; would need order-book confirmation.
+
+**Verdict:** no reliable edge found in simple rules on past markets. H2 (late favourite) and H3 (momentum/reversal) rejected on history. H1 and H4 untested (need real order books and are low-prior).
