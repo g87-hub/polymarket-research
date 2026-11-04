@@ -1,0 +1,8 @@
+# Research data and machine state live on the research-data branch, not main.
+data/
+reports/
+state/
+_store/
+__pycache__/
+.pytest_cache/
+*.pyc

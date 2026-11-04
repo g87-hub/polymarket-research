@@ -1,0 +1,39 @@
+name: 3 - Research report (train/validation)
+on:
+  workflow_dispatch:
+    inputs:
+      freeze_variant:
+        description: "Optional: exact variant id to FREEZE (from the report). Leave empty to just report."
+        default: ""
+      run_untouched_test:
+        description: "Type ONE-SHOT to evaluate the frozen strategy on the untouched test split"
+        default: ""
+permissions:
+  contents: write
+concurrency:
+  group: research-store   # one writer at a time
+  cancel-in-progress: false
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    env:
+      IN_FREEZE_VARIANT: ${{ inputs.freeze_variant }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Pull stored research state
+        run: scripts/store.sh pull
+      - run: python -m pmr normalize-all
+      - run: python -m pmr research
+      - if: inputs.freeze_variant != ''
+        run: python -m pmr freeze "$IN_FREEZE_VARIANT"
+      - if: inputs.run_untouched_test == 'ONE-SHOT'
+        run: python -m pmr evaluate-test
+      - run: cat reports/research_latest.md >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        run: scripts/store.sh push "research"
