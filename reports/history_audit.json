@@ -1,0 +1,83 @@
+{
+  "btc_5m": [
+    {
+      "start_epoch": 1793829000,
+      "status": 200,
+      "points": 16,
+      "median_step_s": 60.0
+    },
+    {
+      "start_epoch": 1793829300,
+      "status": 200,
+      "points": 16,
+      "median_step_s": 60.0
+    },
+    {
+      "start_epoch": 1793829600,
+      "status": 200,
+      "points": 16,
+      "median_step_s": 60.0
+    }
+  ],
+  "btc_15m": [
+    {
+      "start_epoch": 1793826900,
+      "status": 200,
+      "points": 26,
+      "median_step_s": 60.0
+    },
+    {
+      "start_epoch": 1793827800,
+      "status": 200,
+      "points": 26,
+      "median_step_s": 60.0
+    },
+    {
+      "start_epoch": 1793828700,
+      "status": 200,
+      "points": 26,
+      "median_step_s": 60.0
+    }
+  ],
+  "eth_5m": [
+    {
+      "start_epoch": 1793829000,
+      "status": 200,
+      "points": 16,
+      "median_step_s": 60.0
+    },
+    {
+      "start_epoch": 1793829300,
+      "status": 200,
+      "points": 16,
+      "median_step_s": 60.0
+    },
+    {
+      "start_epoch": 1793829600,
+      "status": 200,
+      "points": 16,
+      "median_step_s": 60.0
+    }
+  ],
+  "eth_15m": [
+    {
+      "start_epoch": 1793826900,
+      "status": 200,
+      "points": 26,
+      "median_step_s": 60.0
+    },
+    {
+      "start_epoch": 1793827800,
+      "status": 200,
+      "points": 26,
+      "median_step_s": 60.0
+    },
+    {
+      "start_epoch": 1793828700,
+      "status": 200,
+      "points": 26,
+      "median_step_s": 60.0
+    }
+  ],
+  "conclusion_template": "price history (if any) is a midpoint/trade series with no depth; executable-price tests require prospective book collection"
+}
